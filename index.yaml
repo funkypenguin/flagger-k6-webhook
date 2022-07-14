@@ -1,0 +1,21 @@
+apiVersion: v1
+entries:
+  k6-loadtester:
+  - apiVersion: v2
+    appVersion: 0.1.1
+    created: "2022-07-14T03:50:25.195795309Z"
+    description: Flagger webhook using k6 to do load testing of the canary before rolling out traffic
+    digest: 4337efbd328373df2fe57ee28456398ccadc22e519170c684c84c699af29e500
+    keywords:
+    - flagger
+    - canary
+    - webhook
+    - k6
+    name: k6-loadtester
+    sources:
+    - https://github.com/grafana/flagger-k6-webhook
+    type: application
+    urls:
+    - https://github.com/funkypenguin/flagger-k6-webhook/releases/download/k6-loadtester-0.0.1-pre-01/k6-loadtester-0.0.1-pre-01.tgz
+    version: 0.0.1-pre-01
+generated: "2022-07-14T03:50:24.984087221Z"
