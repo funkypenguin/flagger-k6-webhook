@@ -7,6 +7,32 @@ entries:
           description: Initial release
     apiVersion: v2
     appVersion: 0.1.1
+    created: "2022-07-15T02:52:48.533052678Z"
+    description: Flagger webhook using k6 to do load testing of the canary before rolling out traffic
+    digest: 42f5e57c80b2719df3c08271bec023f46e4ff708fee5e58a9323b0696735aaec
+    home: https://github.com/k8s-at-home/charts/tree/master/charts/stable/autobrr
+    icon: https://avatars.githubusercontent.com/u/88781313?s=200&v=4
+    keywords:
+    - flagger
+    - canary
+    - webhook
+    - k6
+    maintainers:
+    - email: davidy@funkypenguin.co.nz
+      name: funkypenguin
+    name: k6-loadtester
+    sources:
+    - https://github.com/grafana/flagger-k6-webhook
+    type: application
+    urls:
+    - https://github.com/funkypenguin/flagger-k6-webhook/releases/download/k6-loadtester-0.0.3/k6-loadtester-0.0.3.tgz
+    version: 0.0.3
+  - annotations:
+      artifacthub.io/changes: |-
+        - kind: added
+          description: Initial release
+    apiVersion: v2
+    appVersion: 0.1.1
     created: "2022-07-15T02:41:10.926510196Z"
     description: Flagger webhook using k6 to do load testing of the canary before rolling out traffic
     digest: 117bdc853332a53d85fa1980f66d111c2dd8fd6b6168677c212ab3b542898a3a
