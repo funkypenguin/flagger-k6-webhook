@@ -1,0 +1,101 @@
+name: Auto Release Chart
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  auto-release-chart:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Read current chart version
+        id: current
+        run: |
+          CHART_VERSION=$(yq '.version' charts/k6-loadtester/Chart.yaml)
+          APP_VERSION=$(yq '.appVersion' charts/k6-loadtester/Chart.yaml)
+          echo "chart_version=${CHART_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Check if update is needed
+        id: check
+        env:
+          TAG: ${{ github.ref_name }}
+          APP_VERSION: ${{ steps.current.outputs.app_version }}
+        run: |
+          HIGHEST=$(printf '%s\n' "${TAG}" "${APP_VERSION}" | sort -V | tail -1)
+          if [[ "${HIGHEST}" != "${TAG}" || "${TAG}" == "${APP_VERSION}" ]]; then
+            echo "Tag ${TAG} is not newer than ${APP_VERSION}, skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Calculate new chart version
+        if: steps.check.outputs.skip == 'false'
+        id: new-version
+        env:
+          CHART_VERSION: ${{ steps.current.outputs.chart_version }}
+          OLD_APP_VERSION: ${{ steps.current.outputs.app_version }}
+          NEW_APP_VERSION: ${{ github.ref_name }}
+        run: |
+          OLD="${OLD_APP_VERSION#v}"
+          NEW="${NEW_APP_VERSION#v}"
+
+          IFS='.' read -r old_major old_minor old_patch <<< "${OLD}"
+          IFS='.' read -r new_major new_minor new_patch <<< "${NEW}"
+          IFS='.' read -r chart_major chart_minor chart_patch <<< "${CHART_VERSION}"
+
+          if [[ "${new_major}" -gt "${old_major}" ]]; then
+            NEW_CHART_VERSION="$((chart_major + 1)).0.0"
+          elif [[ "${new_minor}" -gt "${old_minor}" ]]; then
+            NEW_CHART_VERSION="${chart_major}.$((chart_minor + 1)).0"
+          else
+            NEW_CHART_VERSION="${chart_major}.${chart_minor}.$((chart_patch + 1))"
+          fi
+
+          echo "chart_version=${NEW_CHART_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Chart.yaml
+        if: steps.check.outputs.skip == 'false'
+        env:
+          TAG: ${{ github.ref_name }}
+          NEW_VERSION: ${{ steps.new-version.outputs.chart_version }}
+        run: |
+          yq -i ".version = \"${NEW_VERSION}\"" charts/k6-loadtester/Chart.yaml
+          yq -i ".appVersion = \"${TAG}\"" charts/k6-loadtester/Chart.yaml
+          yq -i ".annotations.\"artifacthub.io/changes\" = \"- kind: updated\n  description: Update appVersion to ${TAG}\"" charts/k6-loadtester/Chart.yaml
+
+      - name: Get GitHub App token
+        if: steps.check.outputs.skip == 'false'
+        id: get-github-app-token
+        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+        with:
+          github_app: grafana-flagger-k6-releaser
+
+      - name: Create Pull Request
+        if: steps.check.outputs.skip == 'false'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.get-github-app-token.outputs.token }}
+          commit-message: "chore: update chart to ${{ github.ref_name }}"
+          title: "chore: release chart for ${{ github.ref_name }}"
+          body: |
+            Automated PR to update the Helm chart for release ${{ github.ref_name }}.
+
+            - Updates `appVersion` to `${{ github.ref_name }}`
+            - Bumps chart `version` from `${{ steps.current.outputs.chart_version }}` to `${{ steps.new-version.outputs.chart_version }}`
+          branch: auto-release-chart/${{ github.ref_name }}
+          base: main
+          labels: |
+            automated
